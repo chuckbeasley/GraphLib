@@ -10,7 +10,7 @@ public class Vertex
     public string? Label { get; set; }
     public object? Data { get; init; }
 
-    public Vertex() 
+    public Vertex()
     {
     }
 

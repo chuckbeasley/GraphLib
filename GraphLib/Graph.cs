@@ -1,6 +1,4 @@
-﻿using System.Security.Cryptography.X509Certificates;
-
-namespace GraphLib;
+﻿namespace GraphLib;
 
 public class Graph
 {
@@ -9,11 +7,10 @@ public class Graph
 
     private const int MAX_VERTICES = 20;
     private int infinity = int.MaxValue;
-    private Vertex[] vertices;
-    private int[,] adjacencyMatrix;
+    private List<List<int>> adjacencyMatrix;
     private int numVertices;
     private int numTree;
-    private DistantOriginal[] sPath;
+    private List<DistantOriginal> sPath;
     private List<DistantOriginal> shortestPath;
     private int currentVertex;
     private int startToCurrent;
@@ -21,11 +18,11 @@ public class Graph
     public Graph()
     {
         VerticesList = new List<Vertex>();
-        EdgeList = new List<Edge<Vertex,Vertex>>();
+        EdgeList = new List<Edge<Vertex, Vertex>>();
         numVertices = 0;
         numTree = 0;
-
-        sPath = new DistantOriginal[MAX_VERTICES];
+        adjacencyMatrix = new List<List<int>>();
+        sPath = new List<DistantOriginal>(MAX_VERTICES);
         shortestPath = new List<DistantOriginal>();
     }
 
@@ -33,20 +30,44 @@ public class Graph
     {
         Vertex vertex = VertexFactory.CreateVertex(label, data);
         VerticesList.Add(vertex);
+        numVertices = VerticesList.Count;
+        // Expand adjacencyMatrix for new vertex
+        foreach (var row in adjacencyMatrix)
+        {
+            row.Add(0);
+        }
+        var newRow = new List<int>(new int[numVertices]);
+        adjacencyMatrix.Add(newRow);
         return vertex.Id;
     }
 
     public void AddEdge(int start, int end, int weight)
     {
+        if (start < 0 || start >= VerticesList.Count || end < 0 || end >= VerticesList.Count)
+            throw new ArgumentOutOfRangeException("Vertex index out of range.");
+
+        var startVertex = VerticesList[start];
+        var endVertex = VerticesList[end];
+
+        startVertex.IsBoundary = false;
+        endVertex.Depth = startVertex.Depth + 1;
+
+        EdgeList.Add(EdgeFactory<Vertex, Vertex>.CreateEdge(startVertex, endVertex, weight));
+        adjacencyMatrix[start][end] = weight;
     }
 
     public void AddEdge(Vertex start, Vertex end, int weight)
     {
+        int startIdx = VerticesList.IndexOf(start);
+        int endIdx = VerticesList.IndexOf(end);
+        if (startIdx == -1 || endIdx == -1)
+            throw new ArgumentException("Vertex not found in VerticesList.");
         start.IsBoundary = false;
         end.Depth = start.Depth + 1;
         EdgeList.Add(EdgeFactory<Vertex, Vertex>.CreateEdge(start, end, weight));
+        adjacencyMatrix[startIdx][endIdx] = weight;
     }
-    
+
     public float CalculateBetweenness(Vertex vertex)
     {
         return 0;
@@ -58,7 +79,7 @@ public class Graph
     }
 
     public int CalculateDegree(Vertex vertex)
-    {       
+    {
         return EdgeList.Count(e => e.Start == vertex || e.End == vertex);
     }
 
@@ -67,52 +88,86 @@ public class Graph
         return EdgeList.Count(e => e?.Start?.Id == id || e?.End?.Id == id);
     }
 
-    public float CalculateDeggreeCentrality(Vertex vertex)
+    public float CalculateDegreeCentrality(Vertex vertex)
     {
         return (float)CalculateDegree(vertex) / (VerticesList.Count - 1);
     }
 
-    public float CalculateDeggreeCentrality(Guid id)
+    public float CalculateDegreeCentrality(Guid id)
     {
         return (float)CalculateDegree(id) / (VerticesList.Count - 1);
     }
 
     public float CalculateDensity()
     {
-        return (2 * EdgeList.Count) / (VerticesList.Count * (VerticesList.Count - 1));
+        int n = VerticesList.Count;
+        if (n <= 1) return 0f;
+        return (2f * EdgeList.Count) / (n * (n - 1));
+    }
+    public float CalculateClosenessCentrality(Vertex vertex)
+    {
+        if (VerticesList.Count == 0) return 0f;
+        var distances = new Dictionary<Vertex, int>();
+        foreach (var v in VerticesList)
+        {
+            distances[v] = int.MaxValue;
+        }
+        distances[vertex] = 0;
+        var queue = new Queue<Vertex>();
+        queue.Enqueue(vertex);
+        while (queue.Count > 0)
+        {
+            var current = queue.Dequeue();
+            foreach (var edge in EdgeList.Where(e => e.Start == current))
+            {
+                var neighbor = edge.End;
+                if (distances[neighbor] == int.MaxValue)
+                {
+                    distances[neighbor] = distances[current] + edge.Weight;
+                    queue.Enqueue(neighbor);
+                }
+            }
+        }
+        var totalDistance = distances.Values.Sum();
+        return totalDistance > 0 ? (float)(VerticesList.Count - 1) / totalDistance : 0f;
     }
 
     public void DeleteVertex(int vertex)
     {
-        if (vertex != numVertices - 1)
+        if (vertex < 0 || vertex >= VerticesList.Count)
+            throw new ArgumentOutOfRangeException("Vertex index out of range.");
+        VerticesList.RemoveAt(vertex);
+        numVertices = VerticesList.Count;
+        adjacencyMatrix.RemoveAt(vertex);
+        foreach (var row in adjacencyMatrix)
         {
-            for (int i = vertex; i < numVertices - 1; i++)
-            {
-                vertices[i] = vertices[i + 1];
-            }
-
-            for (int row = vertex; row < numVertices - 1; row++)
-            {
-                MoveRow(row, numVertices);
-            }
-
-            for (int col = vertex; col < numVertices - 1; col++)
-            {
-                MoveCol(col, numVertices - 1);
-            }
+            row.RemoveAt(vertex);
         }
-
-        numVertices--;
     }
 
     public void DeleteVertex(Guid id)
     {
-        VerticesList.Remove(VerticesList.First(v => v.Id == id));
+        var vertex = VerticesList.FirstOrDefault(v => v.Id == id);
+        if (vertex != null)
+        {
+            VerticesList.Remove(vertex);
+            EdgeList.RemoveAll(e => e.Start?.Id == id || e.End?.Id == id);
+        }
     }
 
     public void DeleteEdge(int start, int end)
     {
-        adjacencyMatrix[start, end] = 0;
+        if (start < 0 || start >= VerticesList.Count || end < 0 || end >= VerticesList.Count)
+            throw new ArgumentOutOfRangeException("Vertex index out of range.");
+
+        var startVertex = VerticesList[start];
+        var endVertex = VerticesList[end];
+
+        var edge = EdgeList.FirstOrDefault(e => e.Start == startVertex && e.End == endVertex);
+        if (edge != null)
+        {
+            EdgeList.Remove(edge);
+        }
     }
 
     public void DeleteEdge(Guid start, Guid end)
@@ -122,12 +177,16 @@ public class Graph
 
     public void Clear()
     {
+        VerticesList.Clear();
+        EdgeList.Clear();
         numVertices = 0;
+        numTree = 0;
+        shortestPath.Clear();
     }
 
     public void ShowVertex(int v)
     {
-        Console.WriteLine(vertices[v].Label);
+        Console.WriteLine(VerticesList[v].Label);
     }
 
     public void ShowVertex(Guid id)
@@ -137,19 +196,17 @@ public class Graph
 
     public int NoSuccessors()
     {
-        bool isEdge;
         for (int row = 0; row < numVertices; row++)
         {
-            isEdge = false;
+            bool isEdge = false;
             for (int col = 0; col < numVertices; col++)
             {
-                if (adjacencyMatrix[row, col] > 0)
+                if (adjacencyMatrix[row][col] > 0)
                 {
                     isEdge = true;
                     break;
                 }
             }
-
             if (!isEdge)
             {
                 return row;
@@ -184,23 +241,6 @@ public class Graph
         DepthFirstSearchInternal(EdgeList.First().Start!, visited);
     }
 
-    private void DepthFirstSearchInternal(Vertex vertex, HashSet<Vertex> visited)
-    {
-        // Mark the current node as visited
-        visited.Add(vertex);
-        Console.WriteLine(vertex.Label);
-
-        // Recur for all the vertices adjacent to this vertex
-        foreach (Edge<Vertex, Vertex> edge in EdgeList.Where(x => x.Start == vertex ||  x.End == vertex))
-        {
-            Vertex? adjacent = edge.End;
-            if (adjacent != null && !visited.Contains(adjacent))
-            {
-                DepthFirstSearchInternal(adjacent, visited);
-            }
-        }
-    }
-
     public void BreadthFirstSearch()
     {
         if (EdgeList.First().Start! == null)
@@ -222,7 +262,7 @@ public class Graph
                 queue.Enqueue(adjacent);
             }
         }
-        
+
         while (queue.Count > 0)
         {
             Vertex vertex = queue.Dequeue();
@@ -232,44 +272,50 @@ public class Graph
 
     public void MinimumSpanningTree()
     {
-        Stack<int> gStack = new Stack<int>();
-        vertices[0].Visited = true;
-        gStack.Push(0);
+        if (VerticesList.Count == 0)
+            return;
 
-        while (gStack.Count > 0)
+        var visited = new HashSet<Vertex>();
+        var stack = new Stack<Vertex>();
+        var startVertex = VerticesList[0];
+        visited.Add(startVertex);
+        stack.Push(startVertex);
+
+        while (stack.Count > 0)
         {
-            int currentVertex = gStack.Peek();
-            int v = GetAdjacentUnvisitedVertex(currentVertex);
-            if (v == -1)
+            var currentVertex = stack.Peek();
+            // Find an adjacent unvisited vertex
+            var adjacent = EdgeList
+                .Where(e => e.Start == currentVertex && !visited.Contains(e.End))
+                .Select(e => e.End)
+                .FirstOrDefault();
+
+            if (adjacent == null)
             {
-                gStack.Pop();
+                stack.Pop();
             }
             else
             {
-                vertices[v].Visited = true;
-                gStack.Push(v);
-                ShowVertex(currentVertex);
-                ShowVertex(v);
-                Console.WriteLine();
+                visited.Add(adjacent);
+                stack.Push(adjacent);
+                Console.WriteLine($"{currentVertex.Label} - {adjacent.Label}");
             }
-        }
-
-        for (int i = 0; i < numVertices; i++)
-        {
-            vertices[i].Visited = false;
         }
     }
 
-    public void Path() 
+    public void Path()
     {
         int startTree = 0;
-        vertices[startTree].IsInTree = true;
+        VerticesList[startTree].IsInTree = true;
         numTree = 0;
 
         for (int i = 0; i < numVertices; i++)
         {
-            int tempDist = adjacencyMatrix[startTree, i];
-            sPath[i] = new DistantOriginal(startTree, tempDist);
+            int tempDist = adjacencyMatrix[startTree][i];
+            if (i < sPath.Count)
+                sPath[i] = new DistantOriginal(startTree, tempDist);
+            else
+                sPath.Add(new DistantOriginal(startTree, tempDist));
         }
 
         while (numTree < numVertices)
@@ -278,7 +324,7 @@ public class Graph
             int minDist = sPath[indexMin].Distance;
             currentVertex = indexMin;
             startToCurrent = sPath[indexMin].Distance;
-            vertices[currentVertex].IsInTree = true;
+            VerticesList[currentVertex].IsInTree = true;
             numTree++;
             AdjustShortPath();
         }
@@ -287,7 +333,7 @@ public class Graph
         numTree = 0;
         for (int i = 0; i < numVertices; i++)
         {
-            vertices[i].IsInTree = false;
+            VerticesList[i].IsInTree = false;
         }
     }
 
@@ -297,7 +343,7 @@ public class Graph
         int indexMin = 0;
         for (int i = 0; i < numVertices; i++)
         {
-            if (!vertices[i].IsInTree && sPath[i].Distance < minDist)
+            if (!VerticesList[i].IsInTree && sPath[i].Distance < minDist)
             {
                 minDist = sPath[i].Distance;
                 indexMin = i;
@@ -311,13 +357,13 @@ public class Graph
         int column = 1;
         while (column < numVertices)
         {
-            if (vertices[column].IsInTree)
+            if (VerticesList[column].IsInTree)
             {
                 column++;
                 continue;
             }
 
-            int currentToFringe = adjacencyMatrix[currentVertex, column];
+            int currentToFringe = adjacencyMatrix[currentVertex][column];
             int startToFringe = startToCurrent + currentToFringe;
             int sPathDist = sPath[column].Distance;
 
@@ -335,7 +381,7 @@ public class Graph
     {
         for (int i = 0; i < numVertices; i++)
         {
-            Console.Write(vertices[i].Label + "=");
+            Console.Write(VerticesList[i].Label + "=");
             if (sPath[i].Distance == infinity)
             {
                 Console.Write("inf");
@@ -345,37 +391,96 @@ public class Graph
                 Console.Write(sPath[i].Distance);
             }
 
-            string parent = vertices[sPath[i].ParentVertex].Label;
+            string parent = VerticesList[sPath[i].ParentVertex].Label;
             Console.Write("(" + parent + ") ");
         }
     }
 
-    private int GetAdjacentUnvisitedVertex(int v)
+    public bool AreConnected(Vertex v1, Vertex v2)
     {
-        for (int i = 0; i < numVertices; i++)
+        return EdgeList.Any(e => e.Start == v1 && e.End == v2);
+    }
+
+    public void Path(Guid startId)
+    {
+        var startVertex = VerticesList.FirstOrDefault(v => v.Id == startId);
+        if (startVertex == null)
+            return;
+
+        var distances = VerticesList.ToDictionary(v => v, v => v == startVertex ? 0 : int.MaxValue);
+        var previous = VerticesList.ToDictionary(v => v, v => (Vertex?)null);
+        var unvisited = new HashSet<Vertex>(VerticesList);
+
+        while (unvisited.Count > 0)
         {
-            if (adjacencyMatrix[v, i] == 1 && !vertices[i].Visited)
+            var current = unvisited.OrderBy(v => distances[v]).First();
+            unvisited.Remove(current);
+
+            foreach (var edge in EdgeList.Where(e => e.Start == current))
             {
-                return i;
+                var neighbor = edge.End;
+                if (!unvisited.Contains(neighbor)) continue;
+
+                int alt = distances[current] + edge.Weight;
+                if (alt < distances[neighbor])
+                {
+                    distances[neighbor] = alt;
+                    previous[neighbor] = current;
+                }
             }
         }
 
-        return -1;
-    }
-
-    private void MoveRow(int row, int length)
-    {
-        for (int col = 0; col < length; col++)
+        // Display paths
+        foreach (var vertex in VerticesList)
         {
-            adjacencyMatrix[row, col] = adjacencyMatrix[row + 1, col];
+            Console.Write(vertex.Label + "=");
+            if (distances[vertex] == int.MaxValue)
+            {
+                Console.Write("inf");
+            }
+            else
+            {
+                Console.Write(distances[vertex]);
+            }
+
+            var path = new Stack<string>();
+            var v = vertex;
+            while (previous[v] != null)
+            {
+                path.Push(previous[v]!.Label!);
+                v = previous[v]!;
+            }
+            if (path.Count > 0)
+            {
+                Console.Write("(" + string.Join("->", path) + ") ");
+            }
+            else
+            {
+                Console.Write(" ");
+            }
         }
+        Console.WriteLine();
     }
 
-    private void MoveCol(int col, int length)
+    public bool IsEmpty()
     {
-        for (int row = 0; row < length; row++)
+        return VerticesList.Count == 0;
+    }
+
+    private void DepthFirstSearchInternal(Vertex vertex, HashSet<Vertex> visited)
+    {
+        // Mark the current node as visited
+        visited.Add(vertex);
+        Console.WriteLine(vertex.Label);
+
+        // Recur for all the vertices adjacent to this vertex
+        foreach (Edge<Vertex, Vertex> edge in EdgeList.Where(x => x.Start == vertex || x.End == vertex))
         {
-            adjacencyMatrix[row, col] = adjacencyMatrix[row, col + 1];
+            Vertex? adjacent = edge.End;
+            if (adjacent != null && !visited.Contains(adjacent))
+            {
+                DepthFirstSearchInternal(adjacent, visited);
+            }
         }
     }
 }

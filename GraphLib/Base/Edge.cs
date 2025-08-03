@@ -1,6 +1,6 @@
 ﻿namespace GraphLib;
 
-public class Edge<T1,T2> where T1 : Vertex, new() where T2 : Vertex, new()
+public class Edge<T1, T2> where T1 : Vertex, new() where T2 : Vertex, new()
 {
     public int Weight { get; set; }
     public T1? Start { get; set; }
