@@ -68,14 +68,95 @@ public class Graph
         adjacencyMatrix[startIdx][endIdx] = weight;
     }
 
+    // Brandes' algorithm for betweenness centrality
     public float CalculateBetweenness(Vertex vertex)
     {
-        return 0;
+        var betweenness = 0.0f;
+        var vertices = VerticesList;
+        int n = vertices.Count;
+        if (n < 3) return 0f;
+        var indexMap = vertices.Select((v, i) => (v, i)).ToDictionary(x => x.v, x => x.i);
+        for (int s = 0; s < n; s++)
+        {
+            var S = new Stack<Vertex>();
+            var P = vertices.ToDictionary(v => v, v => new List<Vertex>());
+            var sigma = vertices.ToDictionary(v => v, v => 0);
+            var d = vertices.ToDictionary(v => v, v => -1);
+            var Q = new Queue<Vertex>();
+            var start = vertices[s];
+            sigma[start] = 1;
+            d[start] = 0;
+            Q.Enqueue(start);
+            while (Q.Count > 0)
+            {
+                var v = Q.Dequeue();
+                S.Push(v);
+                foreach (var edge in EdgeList.Where(e => e.Start == v))
+                {
+                    var w = edge.End;
+                    if (d[w] < 0)
+                    {
+                        Q.Enqueue(w);
+                        d[w] = d[v] + 1;
+                    }
+                    if (d[w] == d[v] + 1)
+                    {
+                        sigma[w] += sigma[v];
+                        P[w].Add(v);
+                    }
+                }
+            }
+            var delta = vertices.ToDictionary(v => v, v => 0.0f);
+            while (S.Count > 0)
+            {
+                var w = S.Pop();
+                foreach (var v in P[w])
+                {
+                    delta[v] += (sigma[v] / (float)sigma[w]) * (1 + delta[w]);
+                }
+                if (w != start && w == vertex)
+                {
+                    betweenness += delta[w];
+                }
+            }
+        }
+        return betweenness;
     }
 
+    // Power iteration for eigenvector centrality
     public float CalculateEigenvectorCentrality(Vertex vertex)
     {
-        return 0;
+        int n = VerticesList.Count;
+        if (n == 0) return 0f;
+        var centrality = new float[n];
+        for (int i = 0; i < n; i++) centrality[i] = 1.0f;
+        var adj = new float[n, n];
+        for (int i = 0; i < n; i++)
+            for (int j = 0; j < n; j++)
+                adj[i, j] = adjacencyMatrix.Count > i && adjacencyMatrix[i].Count > j && adjacencyMatrix[i][j] > 0 ? 1f : 0f;
+        float tol = 1e-6f;
+        int maxIter = 100;
+        for (int iter = 0; iter < maxIter; iter++)
+        {
+            var next = new float[n];
+            for (int i = 0; i < n; i++)
+            {
+                next[i] = 0f;
+                for (int j = 0; j < n; j++)
+                {
+                    next[i] += adj[i, j] * centrality[j];
+                }
+            }
+            float norm = next.Sum(x => Math.Abs(x));
+            if (norm == 0) break;
+            for (int i = 0; i < n; i++) next[i] /= norm;
+            float diff = 0f;
+            for (int i = 0; i < n; i++) diff += Math.Abs(next[i] - centrality[i]);
+            centrality = next;
+            if (diff < tol) break;
+        }
+        int idx = VerticesList.IndexOf(vertex);
+        return idx >= 0 ? centrality[idx] : 0f;
     }
 
     public int CalculateDegree(Vertex vertex)
@@ -305,95 +386,75 @@ public class Graph
 
     public void Path()
     {
-        int startTree = 0;
-        VerticesList[startTree].IsInTree = true;
-        numTree = 0;
-
-        for (int i = 0; i < numVertices; i++)
+        if (VerticesList.Count == 0) return;
+        int n = VerticesList.Count;
+        int startIdx = 0;
+        var distances = new int[n];
+        var previous = new int[n];
+        var visited = new bool[n];
+        for (int i = 0; i < n; i++)
         {
-            int tempDist = adjacencyMatrix[startTree][i];
-            if (i < sPath.Count)
-                sPath[i] = new DistantOriginal(startTree, tempDist);
-            else
-                sPath.Add(new DistantOriginal(startTree, tempDist));
+            distances[i] = (i == startIdx) ? 0 : infinity;
+            previous[i] = -1;
+            visited[i] = false;
         }
-
-        while (numTree < numVertices)
+        for (int count = 0; count < n; count++)
         {
-            int indexMin = GetMin();
-            int minDist = sPath[indexMin].Distance;
-            currentVertex = indexMin;
-            startToCurrent = sPath[indexMin].Distance;
-            VerticesList[currentVertex].IsInTree = true;
-            numTree++;
-            AdjustShortPath();
-        }
-
-        DisplayPaths();
-        numTree = 0;
-        for (int i = 0; i < numVertices; i++)
-        {
-            VerticesList[i].IsInTree = false;
-        }
-    }
-
-    public int GetMin()
-    {
-        int minDist = infinity;
-        int indexMin = 0;
-        for (int i = 0; i < numVertices; i++)
-        {
-            if (!VerticesList[i].IsInTree && sPath[i].Distance < minDist)
+            int u = -1;
+            int minDist = infinity;
+            for (int i = 0; i < n; i++)
             {
-                minDist = sPath[i].Distance;
-                indexMin = i;
+                if (!visited[i] && distances[i] < minDist)
+                {
+                    minDist = distances[i];
+                    u = i;
+                }
+            }
+            if (u == -1) break;
+            visited[u] = true;
+            for (int v = 0; v < n; v++)
+            {
+                int weight = adjacencyMatrix[u][v];
+                if (weight > 0 && !visited[v])
+                {
+                    int alt = distances[u] + weight;
+                    if (alt < distances[v])
+                    {
+                        distances[v] = alt;
+                        previous[v] = u;
+                    }
+                }
             }
         }
-        return indexMin;
-    }
-
-    public void AdjustShortPath()
-    {
-        int column = 1;
-        while (column < numVertices)
-        {
-            if (VerticesList[column].IsInTree)
-            {
-                column++;
-                continue;
-            }
-
-            int currentToFringe = adjacencyMatrix[currentVertex][column];
-            int startToFringe = startToCurrent + currentToFringe;
-            int sPathDist = sPath[column].Distance;
-
-            if (startToFringe < sPathDist)
-            {
-                sPath[column].ParentVertex = currentVertex;
-                sPath[column].Distance = startToFringe;
-            }
-
-            column++;
-        }
-    }
-
-    public void DisplayPaths()
-    {
-        for (int i = 0; i < numVertices; i++)
+        // Output
+        for (int i = 0; i < n; i++)
         {
             Console.Write(VerticesList[i].Label + "=");
-            if (sPath[i].Distance == infinity)
+            if (distances[i] == infinity)
             {
                 Console.Write("inf");
             }
             else
             {
-                Console.Write(sPath[i].Distance);
+                Console.Write(distances[i]);
             }
-
-            string parent = VerticesList[sPath[i].ParentVertex].Label;
-            Console.Write("(" + parent + ") ");
+            if (previous[i] != -1)
+            {
+                var path = new Stack<string>();
+                int v = i;
+                while (previous[v] != -1)
+                {
+                    path.Push(VerticesList[previous[v]].Label);
+                    v = previous[v];
+                }
+                Console.Write("(" + string.Join("->", path) + ") ");
+            }
+            else
+            {
+                Console.Write(" ");
+            }
         }
+        Console.WriteLine();
     }
 
     public bool AreConnected(Vertex v1, Vertex v2)
@@ -469,16 +530,17 @@ public class Graph
 
     private void DepthFirstSearchInternal(Vertex vertex, HashSet<Vertex> visited)
     {
+        // Mark the current node as visited
         visited.Add(vertex);
         Console.WriteLine(vertex.Label);
 
-        // Only traverse outgoing edges
-        foreach (var edge in EdgeList.Where(e => e.Start == vertex))
+        // Recur for all the vertices adjacent to this vertex
+        foreach (Edge<Vertex, Vertex> edge in EdgeList.Where(x => x.Start == vertex || x.End == vertex))
         {
-            var neighbor = edge.End;
-            if (neighbor != null && !visited.Contains(neighbor))
+            Vertex? adjacent = edge.End;
+            if (adjacent != null && !visited.Contains(adjacent))
             {
-                DepthFirstSearchInternal(neighbor, visited);
+                DepthFirstSearchInternal(adjacent, visited);
             }
         }
     }

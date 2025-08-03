@@ -1,22 +1,20 @@
-﻿namespace GraphLib;
-
-public class Edge<T1, T2> where T1 : Vertex, new() where T2 : Vertex, new()
+﻿namespace GraphLib
 {
-    public int Weight { get; set; }
-    public T1? Start { get; set; }
-    public T2? End { get; set; }
-
-    private Edge()
+    public class Edge<T1, T2>
+        where T1 : Vertex, new()
+        where T2 : Vertex, new()
     {
-        Weight = 0;
-        Start = new T1();
-        End = new T2();
-    }
+        public int Weight { get; set; }
+        public T1? Start { get; set; }
+        public T2? End { get; set; }
 
-    internal Edge(T1 start, T2 end, int weight)
-    {
-        Weight = weight;
-        Start = start;
-        End = end;
+        private Edge() { }
+
+        internal Edge(T1 start, T2 end, int weight)
+        {
+            Start = start;
+            End = end;
+            Weight = weight;
+        }
     }
 }

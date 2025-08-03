@@ -219,7 +219,7 @@
         {
             var graph = CreateSimpleGraph();
             var v1 = graph.VerticesList[0];
-            Assert.Equal(0, graph.CalculateEigenvectorCentrality(v1));
+            Assert.True(graph.CalculateEigenvectorCentrality(v1) > 0);
         }
 
         [Fact]
@@ -283,6 +283,73 @@
             var result = output.ToString().Trim().Split(Environment.NewLine);
             var expected = new[] { "CS101", "CS201", "AL101", "DS101", "OS101", "ALG101" }; // Adjust as needed
             Assert.Equal(expected, result);
+        }
+
+        [Fact]
+        public void ShowVertex_ByIndex_WritesLabel()
+        {
+            var graph = CreateSimpleGraph();
+            using var sw = new StringWriter();
+            Console.SetOut(sw);
+            graph.ShowVertex(0);
+            var output = sw.ToString();
+            Assert.Contains("A", output);
+        }
+
+        [Fact]
+        public void ShowVertex_ById_WritesLabel()
+        {
+            var graph = CreateSimpleGraph();
+            var v1 = graph.VerticesList[0];
+            using var sw = new StringWriter();
+            Console.SetOut(sw);
+            graph.ShowVertex(v1.Id);
+            var output = sw.ToString();
+            Assert.Contains("A", output);
+        }
+
+        [Fact]
+        public void MinimumSpanningTree_WritesEdges()
+        {
+            var graph = CreateSimpleGraph();
+            using var sw = new StringWriter();
+            Console.SetOut(sw);
+            graph.MinimumSpanningTree();
+            var output = sw.ToString();
+            Assert.Contains("A - B", output);
+        }
+
+        [Fact]
+        public void Path_NoArg_WritesPaths()
+        {
+            var graph = CreateSimpleGraph();
+            using var sw = new StringWriter();
+            Console.SetOut(sw);
+            graph.Path();
+            var output = sw.ToString();
+            Assert.Contains("A=0", output);
+            Assert.Contains("B=1", output);
+        }
+
+        [Fact]
+        public void Path_ByGuid_WritesPaths()
+        {
+            var graph = CreateSimpleGraph();
+            var v1 = graph.VerticesList[0];
+            using var sw = new StringWriter();
+            Console.SetOut(sw);
+            graph.Path(v1.Id);
+            var output = sw.ToString();
+            Assert.Contains("A=0", output);
+            Assert.Contains("B=1", output);
+        }
+
+        [Fact]
+        public void NoSuccessors_ReturnsCorrectIndex()
+        {
+            var graph = CreateSimpleGraph();
+            int idx = graph.NoSuccessors();
+            Assert.True(idx >= 0 && idx < graph.VerticesList.Count);
         }
     }
 }
