@@ -9,26 +9,22 @@ public class Graph
     private int infinity = int.MaxValue;
     private List<List<int>> adjacencyMatrix;
     private int numVertices;
-    private int numTree;
     private List<DistantOriginal> sPath;
     private List<DistantOriginal> shortestPath;
-    private int currentVertex;
-    private int startToCurrent;
 
     public Graph()
     {
         VerticesList = new List<Vertex>();
         EdgeList = new List<Edge<Vertex, Vertex>>();
         numVertices = 0;
-        numTree = 0;
         adjacencyMatrix = new List<List<int>>();
         sPath = new List<DistantOriginal>(MAX_VERTICES);
         shortestPath = new List<DistantOriginal>();
     }
 
-    public Guid AddVertex(string label, object data)
+    public Guid AddVertex(string label, object? data)
     {
-        Vertex vertex = VertexFactory.CreateVertex(label, data);
+        Vertex vertex = VertexFactory.CreateVertex(label, data!);
         VerticesList.Add(vertex);
         numVertices = VerticesList.Count;
         // Expand adjacencyMatrix for new vertex
@@ -94,15 +90,15 @@ public class Graph
                 foreach (var edge in EdgeList.Where(e => e.Start == v))
                 {
                     var w = edge.End;
-                    if (d[w] < 0)
+                    if (d[w!] < 0)
                     {
-                        Q.Enqueue(w);
-                        d[w] = d[v] + 1;
+                        Q.Enqueue(w!);
+                        d[w!] = d[v] + 1;
                     }
-                    if (d[w] == d[v] + 1)
+                    if (d[w!] == d[v] + 1)
                     {
-                        sigma[w] += sigma[v];
-                        P[w].Add(v);
+                        sigma[w!] += sigma[v];
+                        P[w!].Add(v);
                     }
                 }
             }
@@ -202,10 +198,10 @@ public class Graph
             foreach (var edge in EdgeList.Where(e => e.Start == current))
             {
                 var neighbor = edge.End;
-                if (distances[neighbor] == int.MaxValue)
+                if (distances[neighbor!] == int.MaxValue)
                 {
-                    distances[neighbor] = distances[current] + edge.Weight;
-                    queue.Enqueue(neighbor);
+                    distances[neighbor!] = distances[current] + edge.Weight;
+                    queue.Enqueue(neighbor!);
                 }
             }
         }
@@ -253,7 +249,7 @@ public class Graph
 
     public void DeleteEdge(Guid start, Guid end)
     {
-        EdgeList.Remove(EdgeList.First(e => e.Start.Id == start && e.End.Id == end));
+        EdgeList.Remove(EdgeList.First(e => e.Start!.Id == start && e.End!.Id == end));
     }
 
     public void Clear()
@@ -261,7 +257,6 @@ public class Graph
         VerticesList.Clear();
         EdgeList.Clear();
         numVertices = 0;
-        numTree = 0;
         shortestPath.Clear();
     }
 
@@ -367,7 +362,7 @@ public class Graph
             var currentVertex = stack.Peek();
             // Find an adjacent unvisited vertex
             var adjacent = EdgeList
-                .Where(e => e.Start == currentVertex && !visited.Contains(e.End))
+                .Where(e => e.Start == currentVertex && !visited.Contains(e.End!))
                 .Select(e => e.End)
                 .FirstOrDefault();
 
@@ -444,7 +439,7 @@ public class Graph
                 int v = i;
                 while (previous[v] != -1)
                 {
-                    path.Push(VerticesList[previous[v]].Label);
+                    path.Push(VerticesList[previous[v]].Label!);
                     v = previous[v];
                 }
                 Console.Write("(" + string.Join("->", path) + ") ");
@@ -480,13 +475,13 @@ public class Graph
             foreach (var edge in EdgeList.Where(e => e.Start == current))
             {
                 var neighbor = edge.End;
-                if (!unvisited.Contains(neighbor)) continue;
+                if (!unvisited.Contains(neighbor!)) continue;
 
                 int alt = distances[current] + edge.Weight;
-                if (alt < distances[neighbor])
+                if (alt < distances[neighbor!])
                 {
-                    distances[neighbor] = alt;
-                    previous[neighbor] = current;
+                    distances[neighbor!] = alt;
+                    previous[neighbor!] = current;
                 }
             }
         }

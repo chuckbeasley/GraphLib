@@ -161,7 +161,7 @@
         {
             var graph = CreateSimpleGraph();
             var e = graph.EdgeList[0];
-            graph.DeleteEdge(e.Start.Id, e.End.Id);
+            graph.DeleteEdge(e.Start!.Id, e.End!.Id);
             Assert.Single(graph.EdgeList);
         }
 
