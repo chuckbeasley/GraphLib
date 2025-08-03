@@ -1,19 +1,20 @@
 # GraphLib
 
-GraphLib is a C# library for creating, manipulating, and analyzing directed graphs. It provides a flexible API for working with vertices and edges, and includes algorithms for traversal, sorting, and centrality calculations.
+GraphLib is a C# library for creating, manipulating, and analyzing directed graphs. It provides a flexible API for working with vertices and edges, and includes algorithms for traversal, sorting, shortest paths, spanning trees, and centrality calculations.
 
 ## Features
 
-- Add and remove vertices and edges
+- Add and remove vertices (by index or Guid) and edges (by index, Guid, or Vertex)
 - Support for custom vertex data
 - Adjacency matrix representation
 - Topological sort
 - Depth-first search (DFS)
 - Breadth-first search (BFS)
-- Minimum spanning tree (MST) traversal
-- Shortest path calculation (Dijkstra-like)
-- Centrality and density metrics (degree, closeness, betweenness, eigenvector)
-- Utility methods for graph analysis
+- Minimum spanning tree traversal
+- Shortest path calculation (Dijkstra-like, by index or Guid)
+- Centrality metrics: degree, degree centrality, closeness, betweenness, eigenvector
+- Density calculation
+- Utility methods: clear graph, check connectivity, show vertex label, check if graph is empty
 
 ## Getting Started
 
@@ -40,6 +41,9 @@ graph.AddEdge(graph.VerticesList[0], graph.VerticesList[1], 5);
 graph.TopologicalSort();
 graph.DepthFirstSearch();
 graph.BreadthFirstSearch();
+graph.Path(v1); // Shortest paths from v1
+float degree = graph.CalculateDegree(graph.VerticesList[0]);
+float density = graph.CalculateDensity();
 ```
 
 See `GraphConsole/Program.cs` for a more detailed example, including custom vertex data and graph traversal.
@@ -57,14 +61,27 @@ See `GraphConsole/Program.cs` for a more detailed example, including custom vert
 ### Key Methods
 
 - `AddVertex(string label, object data)`: Add a vertex with a label and custom data.
-- `AddEdge(Vertex start, Vertex end, int weight)`: Add a directed edge with a weight.
+- `AddEdge(int start, int end, int weight)`: Add a directed edge by vertex index.
+- `AddEdge(Vertex start, Vertex end, int weight)`: Add a directed edge by vertex reference.
 - `DeleteVertex(int index | Guid id)`: Remove a vertex by index or ID.
-- `DeleteEdge(int start, int end | Guid start, Guid end)`: Remove an edge.
+- `DeleteEdge(int start, int end | Guid start, Guid end)`: Remove an edge by index or ID.
 - `TopologicalSort()`: Print vertices in topological order.
 - `DepthFirstSearch()`: Print vertices in DFS order.
 - `BreadthFirstSearch()`: Print vertices in BFS order.
-- `Path(Guid startId)`: Print shortest paths from a start vertex.
-- Centrality and density calculations: `CalculateDegree`, `CalculateClosenessCentrality`, `CalculateDensity`, etc.
+- `MinimumSpanningTree()`: Print edges in a spanning tree traversal.
+- `Path()`, `Path(Guid startId)`: Print shortest paths from the first vertex or a specified vertex.
+- Centrality and density calculations:
+  - `CalculateDegree(Vertex | Guid)`
+  - `CalculateDegreeCentrality(Vertex | Guid)`
+  - `CalculateClosenessCentrality(Vertex)`
+  - `CalculateBetweenness(Vertex)`
+  - `CalculateEigenvectorCentrality(Vertex)`
+  - `CalculateDensity()`
+- Utility methods:
+  - `Clear()`: Remove all vertices and edges
+  - `AreConnected(Vertex, Vertex)`: Check if two vertices are directly connected
+  - `ShowVertex(int | Guid)`: Print vertex label
+  - `IsEmpty()`: Check if graph is empty
 
 ## Testing
 
