@@ -243,30 +243,30 @@ public class Graph
 
     public void BreadthFirstSearch()
     {
-        if (EdgeList.First().Start! == null)
+        if (EdgeList.First().Start == null)
             return;
 
         HashSet<Vertex> visited = new HashSet<Vertex>();
         Queue<Vertex> queue = new Queue<Vertex>();
 
-        visited.Add(EdgeList.First().Start!);
-        queue.Enqueue(EdgeList.First().Start!);
-
-        // Enqueue all adjacent vertices that haven't been visited yet
-        foreach (Edge<Vertex, Vertex> edge in EdgeList.OrderBy(x => x.End?.Depth))
-        {
-            Vertex? adjacent = edge.End;
-            if (adjacent != null && !visited.Contains(adjacent))
-            {
-                visited.Add(adjacent);
-                queue.Enqueue(adjacent);
-            }
-        }
+        var start = EdgeList.First().Start!;
+        visited.Add(start);
+        queue.Enqueue(start);
 
         while (queue.Count > 0)
         {
-            Vertex vertex = queue.Dequeue();
+            var vertex = queue.Dequeue();
             Console.WriteLine(vertex.Label);
+
+            foreach (var edge in EdgeList.Where(e => e.Start == vertex))
+            {
+                var neighbor = edge.End;
+                if (neighbor != null && !visited.Contains(neighbor))
+                {
+                    visited.Add(neighbor);
+                    queue.Enqueue(neighbor);
+                }
+            }
         }
     }
 
@@ -469,17 +469,16 @@ public class Graph
 
     private void DepthFirstSearchInternal(Vertex vertex, HashSet<Vertex> visited)
     {
-        // Mark the current node as visited
         visited.Add(vertex);
         Console.WriteLine(vertex.Label);
 
-        // Recur for all the vertices adjacent to this vertex
-        foreach (Edge<Vertex, Vertex> edge in EdgeList.Where(x => x.Start == vertex || x.End == vertex))
+        // Only traverse outgoing edges
+        foreach (var edge in EdgeList.Where(e => e.Start == vertex))
         {
-            Vertex? adjacent = edge.End;
-            if (adjacent != null && !visited.Contains(adjacent))
+            var neighbor = edge.End;
+            if (neighbor != null && !visited.Contains(neighbor))
             {
-                DepthFirstSearchInternal(adjacent, visited);
+                DepthFirstSearchInternal(neighbor, visited);
             }
         }
     }

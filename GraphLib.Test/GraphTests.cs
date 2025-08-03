@@ -13,6 +13,29 @@
             return graph;
         }
 
+        private Graph CreateCoursesGraph()
+        {
+            var graph = new Graph();
+            var cs101 = graph.AddVertex("CS101", null);
+            var cs201 = graph.AddVertex("CS201", null);
+            var al101 = graph.AddVertex("AL101", null);
+            var ds101 = graph.AddVertex("DS101", null);
+            var os101 = graph.AddVertex("OS101", null);
+            var alg101 = graph.AddVertex("ALG101", null);
+
+            graph.AddEdge(graph.VerticesList.Where(x => x.Id == cs101).First(),
+                graph.VerticesList.Where(x => x.Id == cs201).First(), 0);
+            graph.AddEdge(graph.VerticesList.Where(x => x.Id == cs201).First(),
+                graph.VerticesList.Where(x => x.Id == al101).First(), 0);
+            graph.AddEdge(graph.VerticesList.Where(x => x.Id == cs201).First(),
+                graph.VerticesList.Where(x => x.Id == ds101).First(), 0);
+            graph.AddEdge(graph.VerticesList.Where(x => x.Id == ds101).First(),
+                graph.VerticesList.Where(x => x.Id == os101).First(), 0);
+            graph.AddEdge(graph.VerticesList.Where(x => x.Id == ds101).First(),
+                graph.VerticesList.Where(x => x.Id == alg101).First(), 0);
+            return graph;
+        }
+
         [Fact]
         public void AddVertex_AddsVertex()
         {
@@ -215,7 +238,7 @@
         [Fact]
         public void DepthFirstSearch_WritesLabels()
         {
-            var graph = CreateSimpleGraph();
+            var graph = CreateCoursesGraph();
             using var sw = new StringWriter();
             Console.SetOut(sw);
             graph.DepthFirstSearch();
@@ -226,12 +249,40 @@
         [Fact]
         public void BreadthFirstSearch_WritesLabels()
         {
-            var graph = CreateSimpleGraph();
+            var graph = CreateCoursesGraph();
             using var sw = new StringWriter();
             Console.SetOut(sw);
             graph.BreadthFirstSearch();
             var output = sw.ToString();
             Assert.Contains("A", output);
+        }
+
+        [Fact]
+        public void DepthFirstSearch_ReturnsExpectedOrder()
+        {
+            var graph = CreateCoursesGraph();
+            var output = new StringWriter();
+            Console.SetOut(output);
+
+            graph.DepthFirstSearch();
+
+            var result = output.ToString().Trim().Split(Environment.NewLine);
+            var expected = new[] { "CS101", "CS201", "AL101", "DS101", "OS101", "ALG101" }; // Adjust as needed
+            Assert.Equal(expected, result);
+        }
+
+        [Fact]
+        public void BreadthFirstSearch_ReturnsExpectedOrder()
+        {
+            var graph = CreateCoursesGraph();
+            var output = new StringWriter();
+            Console.SetOut(output);
+
+            graph.BreadthFirstSearch();
+
+            var result = output.ToString().Trim().Split(Environment.NewLine);
+            var expected = new[] { "CS101", "CS201", "AL101", "DS101", "OS101", "ALG101" }; // Adjust as needed
+            Assert.Equal(expected, result);
         }
     }
 }
